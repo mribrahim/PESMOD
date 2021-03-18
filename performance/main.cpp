@@ -1,0 +1,146 @@
+//
+// Created by ibrahim on 09/03/2021
+//
+
+#include <iostream>
+
+#include <opencv4/opencv2/opencv.hpp>
+#include <opencv4/opencv2/highgui.hpp>
+#include <opencv4/opencv2/imgproc.hpp>
+
+#include "utils.h"
+
+using namespace std;
+using namespace cv;
+
+int main(int argc, char *argv[])
+{
+    string path =  "/home/ibrahim/Desktop/Dataset/my IHA dataset/PESMOD/Pexels-Marian/";
+    string pathMask = "/home/ibrahim/MyProjects/pesmod_dataset/SCBU-PESMOD-results/Pexels-Marian/";
+    for (int i = 0; i < argc; ++i)
+    {
+        if (0 == strcmp("-f", argv[i]))
+        {
+            path = argv[i+1];
+        }
+        else if (0 == strcmp("-m", argv[i]))
+        {
+            pathMask = argv[i+1];
+        }
+    }
+
+    cout<< "\n\nImage sequence folder: " << path << endl;
+    cout<< "Image sequence mask folder: " << pathMask << endl;
+
+    vector<string> imageList, maskList;
+    bool maskFound = false;
+
+    read_directory(path + "/images/", imageList);
+    sort(imageList.begin(), imageList.end());
+
+    if (!pathMask.empty()){
+        maskFound = true;
+        read_directory(pathMask, maskList);
+        sort(maskList.begin(), maskList.end());
+    }
+    else{
+        cout<<" No mask folder input, No performance comparison..." << endl;
+    }
+
+    Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5,5));
+
+    bool applyOpening = true;
+    int totalGT=0, totalFound = 0, totalTP=0, totalFP=0, totalTN=0, totalFN=0;
+    float totalIntersectRatio = 0;
+    int i = 0;
+    bool processOneStep = false;
+    bool isStopped = false;
+    int keyboard;
+    do{
+
+        keyboard = waitKey(10);
+        if ('s' == keyboard)
+        {
+            isStopped = !isStopped;
+            processOneStep = false;
+        }
+        else if ( 83 == keyboard )
+        {
+            processOneStep = true;
+        }
+        else if (keyboard == 'q' || keyboard == 27) {
+            break;
+        }
+
+        if (isStopped){
+            continue;
+        }
+
+        vector<Rect> bboxesGT, bboxesFound;
+
+        string filename = imageList.at(i);
+        cout<<"filename: " <<filename<<endl;
+        string fullPath = path + "/images/" + filename;
+        Mat frame = imread(fullPath);
+
+        bboxesGT = readGtboxesPESMOT(fullPath);
+        for (Rect box: bboxesGT){
+            rectangle(frame, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(0,255,0));
+        }
+
+        if (maskFound){
+            // implement mask to Bboxes
+            Mat mask, maskResized;
+            mask = imread(pathMask + filename, 0);
+
+
+            if (applyOpening){
+                morphologyEx( mask, mask, MORPH_OPEN, kernel );
+            }
+
+            resize(mask, maskResized, Size(960, 540));
+            imshow("FG mask", maskResized);
+
+            Mat frame_channels[3];
+            split(frame, frame_channels);
+            add(frame_channels[2], mask, frame_channels[2]);
+            merge(frame_channels, 3, frame);
+
+
+            Mat maskRegions, maskSmallregions;
+            findCombinedRegions(mask, maskRegions, maskSmallregions, bboxesFound, 5);
+            for(Rect bbox: bboxesFound)
+            {
+                rectangle(frame, bbox, Scalar (255,0,0), 2, 1);
+            }
+            compareResults(bboxesGT, bboxesFound, totalGT, totalFound, totalIntersectRatio, totalTP, totalFP, totalTN, totalFN);
+
+        }
+
+        resize(frame, frame, Size(960, 540));
+        imshow("frame", frame);
+
+
+        if (processOneStep){
+            keyboard = waitKey(0);
+            if (83 != keyboard){
+                processOneStep = false;
+            }
+        }
+        i++;
+    } while (i < imageList.size());
+
+
+    float precision = float(totalTP) / (totalTP+totalFP);
+    float recall = float(totalTP) / (totalTP+totalFN);
+    float f1 = 2*precision*recall / (precision+recall);
+    float pwc = 100 * (float)(totalFN + totalFP) / (totalTP + totalFP + totalFN + totalTN);
+    cout << " sequence: " << path << endl;
+    cout << " totalGT: " << totalGT << endl;
+    cout << " (totalTP + totalFN): " << (totalTP + totalFN) << endl;
+    cout << " totalFound: " << totalFound << endl;
+    cout << " intersectRatio average: " << totalIntersectRatio/totalGT  << endl;
+    cout << " precision: " << precision << "  recall: " << recall << "  pwc: "<< pwc <<"  f1: " << f1 << endl;
+
+    return 0;
+}
