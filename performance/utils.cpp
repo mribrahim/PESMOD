@@ -108,8 +108,8 @@ void findCombinedRegions(const Mat &mask, Mat &maskRegionOutput, Mat &maskSmallr
 bool checkRectOverlap(const Rect &rectGT, const Rect &r, float &intersectRatio)
 {
     Rect rectIntersecion = rectGT & r;
-    intersectRatio += (float)rectIntersecion.area() / rectGT.area();
     if (rectIntersecion.area()  >= 0.2){
+        intersectRatio += (float)rectIntersecion.area() / rectGT.area();
         return true;
     }
     return false;
