@@ -17,3 +17,27 @@
 
 # Contributions
 If you find any mistakes in the labels, you can report it in the issues section.
+
+## Script to view dataset, build and run performance code to evaluate your own method with foreground mask 
+
+To view dataset after downloading: 
+
+```
+python view-dataset.py --path "/home/ibrahim/PESMOD/Pexels-Welton/"
+```
+
+Build performance code with following commands: 
+```
+cd performance
+mkdir build
+cmake ..
+make .
+```
+Run with (-d for dataset main folder, -m for masks main folder, -f for sequence name, -o if you apply morphological opening):
+```
+./performance -d "/home/ibrahim/PESMOD/" -m "/home/ibrahim/SCBU-PESMOD-results/" -f "Pexels-Marian"
+```
+
+# Dataset sample frames
+![Example frames from each sequence in the dataset](images/dataset.png)
+
