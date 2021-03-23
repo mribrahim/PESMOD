@@ -1,0 +1,125 @@
+<annotation>
+    <folder>images</folder>
+    <filename>frame0077.jpg</filename>
+    <path>Pexels-Grisha-snow/images/frame0077.jpg</path>
+    <source>
+        <database>Unknown</database>
+    </source>
+    <size>
+        <width>1920</width>
+        <height>1080</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>555</xmin>
+            <ymin>730</ymin>
+            <xmax>562</xmax>
+            <ymax>742</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>581</xmin>
+            <ymin>732</ymin>
+            <xmax>588</xmax>
+            <ymax>741</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1272</xmin>
+            <ymin>882</ymin>
+            <xmax>1296</xmax>
+            <ymax>914</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1125</xmin>
+            <ymin>821</ymin>
+            <xmax>1148</xmax>
+            <ymax>863</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1062</xmin>
+            <ymin>736</ymin>
+            <xmax>1074</xmax>
+            <ymax>760</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1067</xmin>
+            <ymin>729</ymin>
+            <xmax>1079</xmax>
+            <ymax>758</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1144</xmin>
+            <ymin>717</ymin>
+            <xmax>1155</xmax>
+            <ymax>737</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1406</xmin>
+            <ymin>690</ymin>
+            <xmax>1415</xmax>
+            <ymax>703</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1455</xmin>
+            <ymin>680</ymin>
+            <xmax>1465</xmax>
+            <ymax>691</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1524</xmin>
+            <ymin>673</ymin>
+            <xmax>1535</xmax>
+            <ymax>685</ymax>
+        </bndbox>
+    </object>
+</annotation>

@@ -1,0 +1,37 @@
+<annotation>
+    <folder>images</folder>
+    <filename>frame0373.jpg</filename>
+    <path>Pexels-Shuraev-trekking/images/frame0373.jpg</path>
+    <source>
+        <database>Unknown</database>
+    </source>
+    <size>
+        <width>1920</width>
+        <height>1080</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1440</xmin>
+            <ymin>555</ymin>
+            <xmax>1463</xmax>
+            <ymax>584</ymax>
+        </bndbox>
+    </object>    <object>
+        <name>motion</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1285</xmin>
+            <ymin>523</ymin>
+            <xmax>1310</xmax>
+            <ymax>553</ymax>
+        </bndbox>
+    </object>
+</annotation>

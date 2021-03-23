@@ -1,0 +1,35 @@
+<annotation>
+  <folder></folder>
+  <filename>frame0564.jpg</filename>
+  <source>
+    <database>Unknown</database>
+    <annotation>Unknown</annotation>
+    <image>Unknown</image>
+  </source>
+  <size>
+    <width>1920</width>
+    <height>1080</height>
+    <depth></depth>
+  </size>
+  <segmented>0</segmented>
+  <object>
+    <name>motion</name>
+    <occluded>0</occluded>
+    <bndbox>
+      <xmin>1124.38</xmin>
+      <ymin>617.46</ymin>
+      <xmax>1143.7</xmax>
+      <ymax>631.6</ymax>
+    </bndbox>
+  </object>
+  <object>
+    <name>motion</name>
+    <occluded>0</occluded>
+    <bndbox>
+      <xmin>1403.0</xmin>
+      <ymin>681.0</ymin>
+      <xmax>1423.0</xmax>
+      <ymax>691.0</ymax>
+    </bndbox>
+  </object>
+</annotation>

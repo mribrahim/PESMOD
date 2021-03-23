@@ -1,0 +1,35 @@
+<annotation>
+  <folder></folder>
+  <filename>frame0613.jpg</filename>
+  <source>
+    <database>Unknown</database>
+    <annotation>Unknown</annotation>
+    <image>Unknown</image>
+  </source>
+  <size>
+    <width>1920</width>
+    <height>1080</height>
+    <depth></depth>
+  </size>
+  <segmented>0</segmented>
+  <object>
+    <name>motion</name>
+    <occluded>0</occluded>
+    <bndbox>
+      <xmin>1642.0</xmin>
+      <ymin>742.0</ymin>
+      <xmax>1662.0</xmax>
+      <ymax>752.0</ymax>
+    </bndbox>
+  </object>
+  <object>
+    <name>motion</name>
+    <occluded>0</occluded>
+    <bndbox>
+      <xmin>1187.0</xmin>
+      <ymin>646.0</ymin>
+      <xmax>1211.0</xmax>
+      <ymax>663.0</ymax>
+    </bndbox>
+  </object>
+</annotation>
