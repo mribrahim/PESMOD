@@ -15,9 +15,14 @@
 | Total            |       4107       |           13834          |
 
 
-# PESMOD
+# Download
 
 Click [here](https://drive.google.com/file/d/153fLcf4F33G3oKWYUkggBWJRP5LVHV60/view?usp=sharing) to download the dataset
+
+# Citing PESMOD Dataset
+If you find this dataset or method (proposed in the paper) useful in your work, please cite the paper:
+
+Preprint paper on [arxiv](https://arxiv.org/abs/2103.11460) 
 
 # Contributions
 If you find any mistakes in the labels, you can report it in the issues section.
