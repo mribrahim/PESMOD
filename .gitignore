@@ -1,3 +1,10 @@
+.idea/misc.xml
+cmake-build-debug/
+.idea/
+.vscode/
+python/__pycache__/
+*.pyc
+
 # Prerequisites
 *.d
 
