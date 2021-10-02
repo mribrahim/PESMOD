@@ -1,5 +1,6 @@
 .idea/misc.xml
 cmake-build-debug/
+performance/cmake-build-debug/
 .idea/
 .vscode/
 python/__pycache__/
