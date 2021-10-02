@@ -138,6 +138,9 @@ void SimpleBackground::processDiff(const cuda::GpuMat &d_diff, float fgThresh, c
     processDiff(d_diffModified, fgThresh, d_result);
 }
 
-void SimpleBackground::getBackground(cv::cuda::GpuMat &d_bg) {
-    d_background.convertTo(d_bg, CV_8UC3);
+void SimpleBackground::getBackground(Mat &bg) {
+    cuda::GpuMat d_temp, d_bg;
+    getChannel(d_background, 2, d_temp);
+    d_temp.convertTo(d_bg, CV_8UC1);
+    d_bg.download(bg);
 }

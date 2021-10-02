@@ -20,8 +20,7 @@ public:
     void init(const cv::cuda::GpuMat &d_frame, int _minAge=5, int _maxAge=30);
     bool update(const cv::Mat &homoMat, const cv::cuda::GpuMat &d_hsv, cv::cuda::GpuMat &d_fgMask);
     void reset();
-    void getBackground(cv::cuda::GpuMat &d_background);
-    void checkFgMaskByRegionComparison(const cv::cuda::GpuMat d_bgGray, const cv::Mat homoMat, cv::cuda::GpuMat &d_fgMask);
+    void getBackground(cv::Mat &background);
 
 private:
     cv::Ptr<cv::cuda::FarnebackOpticalFlow> farneback;

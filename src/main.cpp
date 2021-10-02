@@ -5,6 +5,8 @@
 #include <opencv4/opencv2/highgui.hpp>
 #include <opencv4/opencv2/imgproc.hpp>
 #include <opencv4/opencv2/cudaarithm.hpp>
+#include <torch/script.h>
+#include <torch/torch.h>
 
 #include "utils.h"
 #include "SimpleBackground.h"
@@ -21,7 +23,7 @@ Mat makeHomoGraphy(int *pnMatch, int nCnt);
 
 int main() {
 
-    string folderName = "Pexels-Wolfgang";
+    string folderName = "Pexels-Welton";
     string path =  "/home/ibrahim/Desktop/Dataset/my IHA dataset/PESMOD/";
     string pathMask = "/home/ibrahim/MyProjects/pesmod_dataset/MySimple-PESMOD-results/";
 
@@ -43,9 +45,11 @@ int main() {
     }
 
     Mat frame, frameGray, frameGrayPrev, fgMask;
-    cuda::GpuMat d_frame, d_hsv, d_frameGray, d_fgMask, d_background;
+    cuda::GpuMat d_frame, d_hsv, d_frameGray, d_fgMask;
     bool isInitialized = false;
     SimpleBackground bgs;
+    auto model = torch::jit::load("/home/ibrahim/MyProjects/traced_resnet_model.pt");
+    model.eval();
 
     int totalGT=0, totalFound = 0, totalTP=0, totalFP=0, totalTN=0, totalFN=0;
     float totalIntersectRatio = 0;
@@ -78,6 +82,8 @@ int main() {
         cout<<"filename: " <<filename<<endl;
         string fullPathFrame = path + folderName + "/images/" + filename;
         Mat frame = imread(fullPathFrame);
+        Mat frameShow;
+        frame.copyTo(frameShow);
 
         d_frame.upload(frame);
         cuda::cvtColor(d_frame, d_hsv, COLOR_BGR2HSV);
@@ -95,18 +101,9 @@ int main() {
         Mat homoMat = findHomographyMatrix(frameGrayPrev, frameGray);
 
         bgs.update(homoMat, d_hsv, d_fgMask);
-        bgs.getBackground(d_background);
 
         cuda::multiply(d_fgMask, 255, d_fgMask);
         d_fgMask.download(fgMask);
-
-//        fgMask = imread(pathMask + folderName + "/" + filename, 0);
-//        string replaceStr = "/home/ibrahim/Desktop/Dataset/my IHA dataset/PESMOD/";
-//        string wfilename = std::regex_replace(fullPathFrame, std::regex(replaceStr), "/home/ibrahim/MyProjects/pesmod_dataset/MyNew-PESMOD-results/");
-//        wfilename = std::regex_replace(wfilename, std::regex("images/"), "");
-//        imwrite("temp.jpg", fgMask );
-//        fgMask = imread("temp.jpg", 0);
-
 
         if (fgMask.empty()){
             i++;
@@ -117,30 +114,60 @@ int main() {
 
         bboxesGT = readGtboxesPESMOT(fullPathFrame);
         for (Rect box: bboxesGT){
-            rectangle(frame, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(0,255,0));
+            rectangle(frameShow, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(0,255,0));
         }
 
         Mat maskRegions, maskSmallregions;
         findCombinedRegions(fgMask, maskRegions, maskSmallregions, bboxesFound, 10);
 
+        Mat background;
+        bgs.getBackground(background);
+        showMat("background", background);
+
         vector<Rect> selectedBoxes;
         for(Rect box: bboxesFound)
         {
-            unsigned int x1 = box.x;
-            unsigned int y1 = box.y;
-            unsigned int x2 = box.x + box.width;
-            unsigned int y2 = box.y + box.height;
+            Mat frame_roi = frameGray(box);
+            Mat bg_roi= background(box);
 
-            if (x1 < 5 or y1 < 5 or x2 > frame.cols-5 or y2 > frame.rows-5)
-            {
+            std::vector<torch::jit::IValue> inputs;
+            torch::Tensor in = imgToTensor(frame_roi);
+            inputs.push_back(in);
+            torch::Tensor output1 = model.forward(inputs).toTensor();
+
+            inputs.clear();
+            in = imgToTensor(bg_roi);
+            inputs.push_back(in);
+            torch::Tensor output2 = model.forward(inputs).toTensor();
+
+            std::vector<float> vector1(output1.data_ptr<float>(), output1.data_ptr<float>() + output1.numel());
+            std::vector<float> vector2(output2.data_ptr<float>(), output2.data_ptr<float>() + output2.numel());
+            float cosSimilarity = cosineSimilarity(vector1.data(), vector2.data(), 1000);
+            float score = calculateScore(frame_roi, bg_roi);
+
+            Mat temp;
+            resize(frame_roi, temp, Size(224,224));
+            imshow("frame_roi",temp);
+            resize(bg_roi, temp, Size(224,224));
+            imshow("bg_roi", temp);
+            cout << "score: "<<score<< "   cosSimilarity: " << cosSimilarity << endl;
+            waitKey(0);
+
+            int x1 = (box.x < 20) ? 20 : box.x;
+            int y1 = (box.y < 20) ? 20 : box.y;
+
+            if (abs(score) < 0.1){
+                rectangle(frame, box, Scalar (255,0,0), 2, 1);
+                putText(frameShow, to_string(score), cv::Point(x1, y1), 2,1, Scalar(255,0,0));
                 continue;
             }
             selectedBoxes.push_back(box);
-            rectangle(frame, box, Scalar (255,0,0), 2, 1);
+            rectangle(frameShow, box, Scalar (0,0,255), 2, 1);
+            putText(frameShow, to_string(score), cv::Point(x1, y1), 2,1, Scalar(0,0,255));
         }
         compareResults(bboxesGT, selectedBoxes, totalGT, totalFound, totalIntersectRatio, totalTP, totalFP, totalTN, totalFN);
 
-        showMat("frame", frame);
+        showMat("frame", frameShow);
 
         i++;
     } while (i < imageList.size());
@@ -151,6 +178,7 @@ int main() {
     float f1 = 2*precision*recall / (precision+recall);
     float pwc = 100 * (float)(totalFN + totalFP) / (totalTP + totalFP + totalFN + totalTN);
     cout << " sequence: " << path << endl;
+    cout << " folderName: " << folderName << endl;
     cout << " totalGT: " << totalGT << endl;
     cout << " (totalTP + totalFN): " << (totalTP + totalFN) << endl;
     cout << " totalFound: " << totalFound << endl;

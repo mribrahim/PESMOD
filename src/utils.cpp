@@ -51,7 +51,7 @@ void showMat(string text, const Mat &img){
     Mat tempMat;
 
     if (img.rows>1000){
-        resize(img, tempMat, Size(img.cols/2, img.rows/2));
+        resize(img, tempMat, Size(2* img.cols/3, 2* img.rows/3));
     }
     else{
         img.copyTo(tempMat);
@@ -341,4 +341,79 @@ void compareResults(const vector<cv::Rect> &gtBoxes, const vector<cv::Rect> &bbo
     totalTP += tp;
     totalFP += fp;
     totalFN += fn;
+}
+
+cv::Mat crop_center(const cv::Mat &img)
+{
+    const int rows = img.rows;
+    const int cols = img.cols;
+
+    const int cropSize = std::min(rows,cols);
+    const int offsetW = (cols - cropSize) / 2;
+    const int offsetH = (rows - cropSize) / 2;
+    const cv::Rect roi(offsetW, offsetH, cropSize, cropSize);
+
+    return img(roi);
+}
+
+std::vector<double> norm_mean = {0.485, 0.456, 0.406};
+std::vector<double> norm_std = {0.229, 0.224, 0.225};
+
+torch::Tensor imgToTensor(Mat img)
+{
+    img = crop_center(img);
+    cv::resize(img, img, cv::Size(224,224));
+
+    if (img.channels()==1)
+        cv::cvtColor(img, img, cv::COLOR_GRAY2RGB);
+    else
+        cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+
+    img.convertTo( img, CV_32FC3, 1/255.0 );
+
+    torch::Tensor img_tensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, c10::kFloat);
+    img_tensor = img_tensor.permute({2, 0, 1});
+    img_tensor.unsqueeze_(0);
+
+    img_tensor = torch::data::transforms::Normalize<>(norm_mean, norm_std)(img_tensor);
+
+    return img_tensor.clone();
+}
+
+float cosineSimilarity(float *A, float *B, unsigned int Vector_Length)
+{
+    float dot = 0.0, denom_a = 0.0, denom_b = 0.0 ;
+    for(unsigned int i = 0u; i < Vector_Length; ++i) {
+        dot += A[i] * B[i] ;
+        denom_a += A[i] * A[i] ;
+        denom_b += B[i] * B[i] ;
+    }
+    return dot / (sqrt(denom_a) * sqrt(denom_b)) ;
+}
+
+float calculateScoreTemplate(Mat frame, Mat bg) {
+
+    cv::Mat matMatchTemplate;
+    cv::matchTemplate(frame, bg, matMatchTemplate, TM_SQDIFF_NORMED);
+    double distanceMatchingTemplate;
+    cv::minMaxIdx(matMatchTemplate, &distanceMatchingTemplate);
+    return distanceMatchingTemplate;
+}
+
+float calculateScoreHist(Mat frame, Mat bg) {
+
+    Mat hist1, hist2;
+    vector<int> channels = {0};
+    vector<int> binNumArray = {256};
+    vector<float> ranges = { 0, 256 };
+    vector<Mat> mats1 = { frame };
+    vector<Mat> mats2 = { bg };
+    calcHist( mats1, channels, Mat(), hist1, binNumArray, ranges) ;
+    calcHist( mats2, channels, Mat(), hist2, binNumArray, ranges) ;
+    return compareHist(hist1, hist2, HISTCMP_CORREL);
+}
+
+float calculateScore(Mat frame, Mat bg)
+{
+    return calculateScoreTemplate(frame, bg);
 }

@@ -132,15 +132,6 @@ int main(int argc, char *argv[])
             vector<Rect> selectedBoxes;
             for(Rect box: bboxesFound)
             {
-                unsigned int x1 = box.x;
-                unsigned int y1 = box.y;
-                unsigned int x2 = box.x + box.width;
-                unsigned int y2 = box.y + box.height;
-
-                if (x1 < 5 or y1 < 5 or x2 > frame.cols-5 or y2 > frame.rows-5)
-                {
-                    continue;
-                }
                 selectedBoxes.push_back(box);
                 rectangle(frame, box, Scalar (255,0,0), 2, 1);
             }

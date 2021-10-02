@@ -14,6 +14,8 @@
 
 #include <opencv4/opencv2/opencv.hpp>
 #include <opencv4/opencv2/opencv_modules.hpp>
+#include <torch/torch.h>
+
 
 void read_directory(const std::string& path, std::vector<std::string>& v);
 void showMat(std::string text, const cv::Mat &img);
@@ -33,5 +35,9 @@ void findCombinedRegions(const cv::Mat &mask, cv::Mat &maskOutput, cv::Mat &smal
 bool checkRectOverlap(const cv::Rect &rectGT, const cv::Rect &r, float &intersectRatio);
 void compareResults(const std::vector<cv::Rect> &gtBoxes, const std::vector<cv::Rect> &bboxes,
                     int &totalGT, int &totalFound, float &totalIntersectRatio, int &totalTP, int &totalFP, int &totalTN, int &totalFN);
+
+torch::Tensor imgToTensor(cv::Mat img);
+float cosineSimilarity(float *A, float *B, unsigned int Vector_Length);
+float calculateScore(cv::Mat frame, cv::Mat bg);
 
 #endif //PERFORMANCE_UTILS_H
