@@ -13,6 +13,26 @@ find_package(CUDA REQUIRED)
 find_package(OpenCV REQUIRED )
 include_directories (${OpenCV_INCLUDE_DIRS})
 
+set(GSLICR_LIB
+        gSLICr_Lib/engines/gSLICr_core_engine.h
+        gSLICr_Lib/engines/gSLICr_seg_engine.h
+        gSLICr_Lib/engines/gSLICr_seg_engine_GPU.h
+        gSLICr_Lib/engines/gSLICr_seg_engine_shared.h
+        gSLICr_Lib/engines/gSLICr_core_engine.cpp
+        gSLICr_Lib/engines/gSLICr_seg_engine.cpp
+        gSLICr_Lib/engines/gSLICr_seg_engine_GPU.cu
+        gSLICr_Lib/objects/gSLICr_settings.h
+        gSLICr_Lib/objects/gSLICr_spixel_info.h
+        gSLICr_Lib/gSLICr_defines.h
+        gSLICr_Lib/gSLICr.h
+        superpixel.cpp superpixel.h)
+
+SOURCE_GROUP(engines FILES ${GSLICR_LIB})
+add_subdirectory(ORUtils)
+
+cuda_add_library(gSLICr_lib
+        ${GSLICR_LIB}
+        OPTIONS -gencode arch=compute_30,code=compute_30)
 
 add_executable(${PROJECT_NAME} main.cpp utils.cpp utils.h SimpleBackground.h simpleBackground.cpp)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${TORCH_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${TORCH_LIBRARIES} gSLICr_lib)

@@ -10,6 +10,7 @@
 
 #include "utils.h"
 #include "SimpleBackground.h"
+#include "superpixel.h"
 
 using namespace std;
 using namespace  cv;
@@ -20,12 +21,12 @@ std::vector<cv::Point2f>  pointsPrev, pointsCurrent;
 
 Mat findHomographyMatrix(const Mat &prevGray, const Mat &currentGray);
 Mat makeHomoGraphy(int *pnMatch, int nCnt);
+void applySuperpixel(SuperPixel superPiksel, const Mat &frame, const cuda::GpuMat &d_frame, cuda::GpuMat &d_fgMask);
 
 int main() {
 
     string folderName = "Pexels-Wolfgang";
     string path =  "/home/ibrahim/Desktop/Dataset/my IHA dataset/PESMOD/";
-    string pathMask = "/home/ibrahim/MyProjects/pesmod_dataset/MySimple-PESMOD-results/";
 
     vector<string> imageList, maskList;
     bool maskFound = false;
@@ -48,8 +49,9 @@ int main() {
     cuda::GpuMat d_frame, d_hsv, d_frameGray, d_fgMask;
     bool isInitialized = false;
     SimpleBackground bgs;
-    auto model = torch::jit::load("/home/ibrahim/MyProjects/traced_resnet_model.pt");
-    model.eval();
+    SuperPixel superPiksel;
+//    auto model = torch::jit::load("/home/ibrahim/MyProjects/traced_resnet_model.pt");
+//    model.eval();
 
     vector<float> gtCosinusScores, gtTemplateScores;
 
@@ -105,7 +107,7 @@ int main() {
         Mat homoMat = findHomographyMatrix(frameGrayPrev, frameGray);
 
         bgs.update(homoMat, d_hsv, d_fgMask);
-
+//        applySuperpixel(superPiksel, frame, d_frame, d_fgMask);
         cuda::multiply(d_fgMask, 255, d_fgMask);
         d_fgMask.download(fgMask);
 
@@ -133,10 +135,10 @@ int main() {
             Mat frame_roi = frameGray(box);
             Mat bg_roi= background(box);
 
-            float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi);
-            float score = calculateScore(frame_roi, bg_roi);
-            gtCosinusScores.push_back(cosSimilarity);
-            gtTemplateScores.push_back(score);
+//            float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi);
+//            float score = calculateScore(frame_roi, bg_roi);
+//            gtCosinusScores.push_back(cosSimilarity);
+//            gtTemplateScores.push_back(score);
 
             rectangle(frameShow, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(0,255,0));
         }
@@ -151,9 +153,6 @@ int main() {
             Mat frame_roi = frameGray(box);
             Mat bg_roi= background(box);
 
-            float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi);
-            float score = calculateScore(frame_roi, bg_roi);
-
 //            Mat temp;
 //            resize(frame_roi, temp, Size(224,224));
 //            imshow("frame_roi",temp);
@@ -161,18 +160,21 @@ int main() {
 //            imshow("bg_roi", temp);
 //            cout << "score: "<<score<< "   cosSimilarity: " << cosSimilarity << endl;
 //            waitKey(0);
+//
+//            float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi);
+//            float score = calculateScore(frame_roi, bg_roi);
 
-            int x1 = (box.x < 20) ? 20 : box.x;
-            int y1 = (box.y < 20) ? 20 : box.y;
-
-            if (abs(score) < 0.1 || cosSimilarity > 0.8){
-                rectangle(frame, box, Scalar (255,0,0), 2, 1);
-                putText(frameShow, to_string(cosSimilarity), cv::Point(x1, y1), 2,1, Scalar(255,0,0));
-                continue;
-            }
+//            int x1 = (box.x < 20) ? 20 : box.x;
+//            int y1 = (box.y < 20) ? 20 : box.y;
+//
+//            if (abs(score) < 0.1 || cosSimilarity > 0.8){
+//                rectangle(frame, box, Scalar (255,0,0), 2, 1);
+//                putText(frameShow, to_string(cosSimilarity), cv::Point(x1, y1), 2,1, Scalar(255,0,0));
+//                continue;
+//            }
             selectedBoxes.push_back(box);
             rectangle(frameShow, box, Scalar (0,0,255), 2, 1);
-            putText(frameShow, to_string(cosSimilarity), cv::Point(x1, y1), 2,1, Scalar(0,0,255));
+//            putText(frameShow, to_string(cosSimilarity), cv::Point(x1, y1), 2,1, Scalar(0,0,255));
         }
         compareResults(bboxesGT, selectedBoxes, totalGT, totalFound, totalIntersectRatio, totalTP, totalFP, totalTN, totalFN);
 
@@ -245,5 +247,50 @@ Mat makeHomoGraphy(int *pnMatch, int nCnt)
 
     }
     return findHomography(pt1, pt2, RANSAC, 1);
+}
+
+
+void applySuperpixel(SuperPixel superPiksel, const Mat &frame, const cuda::GpuMat &d_frame, cuda::GpuMat &d_fgMask)
+{
+    cv::Mat segments, segmentsEdges, maskSegments;
+    superPiksel.run(frame, segments, segmentsEdges, false);
+
+//    showMat("Superpixel segments", segments);
+//    showMat("Superpixel edges", segmentsEdges);
+
+    cvtColor(segmentsEdges, maskSegments, COLOR_BGR2GRAY);
+    threshold(maskSegments, maskSegments, 1, 255, THRESH_BINARY_INV);
+
+    Mat fgMask, fg16U;
+    d_fgMask.download(fgMask);
+
+    // ******* set border to zero ************
+    cv::Rect border(cv::Point(0, 0), maskSegments.size());
+    cv::Scalar color(0);
+    int thickness = 1;
+    cv::rectangle(maskSegments, border, color, thickness);
+    // ***************************************
+
+    Mat mask;
+    multiply(maskSegments, fgMask, mask);
+
+    vector<vector<Point> > contoursIntersect, contoursFG;
+    vector<Vec4i> hierarchy;
+
+    findContours( mask, contoursIntersect, hierarchy, RETR_LIST, CHAIN_APPROX_SIMPLE );
+
+    for( size_t i = 0; i< contoursIntersect.size(); i++ ) {
+
+        unsigned short regionId = segments.at<unsigned short>(contoursIntersect[i].at(0));
+        Mat region = segments==regionId;
+
+        int areaOfsuperPixelRegion = countNonZero(region);
+        int areaOfMotion = contourArea(contoursIntersect[i]);
+        if (areaOfMotion > (areaOfsuperPixelRegion/5) ){
+            fgMask.setTo(1, region);
+//            cout << "use superpixel region  " << regionId<< endl;
+        }
+    }
+    d_fgMask.upload(fgMask);
 }
 
