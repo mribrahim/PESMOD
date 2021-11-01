@@ -36,8 +36,10 @@ bool checkRectOverlap(const cv::Rect &rectGT, const cv::Rect &r, float &intersec
 void compareResults(const std::vector<cv::Rect> &gtBoxes, const std::vector<cv::Rect> &bboxes,
                     int &totalGT, int &totalFound, float &totalIntersectRatio, int &totalTP, int &totalFP, int &totalTN, int &totalFN);
 
+float average(std::vector<float> const& v);
 torch::Tensor imgToTensor(cv::Mat img);
 float cosineSimilarity(float *A, float *B, unsigned int Vector_Length);
+float torchSimilarity(torch::jit::Module model, cv::Mat frame_roi, cv::Mat bg_roi);
 float calculateScore(cv::Mat frame, cv::Mat bg);
 
 #endif //PERFORMANCE_UTILS_H

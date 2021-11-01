@@ -23,7 +23,7 @@ Mat makeHomoGraphy(int *pnMatch, int nCnt);
 
 int main() {
 
-    string folderName = "Pexels-Welton";
+    string folderName = "Pexels-Wolfgang";
     string path =  "/home/ibrahim/Desktop/Dataset/my IHA dataset/PESMOD/";
     string pathMask = "/home/ibrahim/MyProjects/pesmod_dataset/MySimple-PESMOD-results/";
 
@@ -51,6 +51,8 @@ int main() {
     auto model = torch::jit::load("/home/ibrahim/MyProjects/traced_resnet_model.pt");
     model.eval();
 
+    vector<float> gtCosinusScores, gtTemplateScores;
+
     int totalGT=0, totalFound = 0, totalTP=0, totalFP=0, totalTN=0, totalFN=0;
     float totalIntersectRatio = 0;
     int i = 0;
@@ -60,6 +62,8 @@ int main() {
     do{
 
         keyboard = waitKey(2);
+        int64 startTime = cv::getTickCount();
+
         if ('s' == keyboard)
         {
             isStopped = !isStopped;
@@ -79,7 +83,7 @@ int main() {
 
         vector<Rect> bboxesGT, bboxesFound;
         string filename = imageList.at(i);
-        cout<<"filename: " <<filename<<endl;
+//        cout<<"filename: " <<filename<<endl;
         string fullPathFrame = path + folderName + "/images/" + filename;
         Mat frame = imread(fullPathFrame);
         Mat frameShow;
@@ -112,64 +116,74 @@ int main() {
         showMat("Foreground mask", fgMask);
         frameGray.copyTo(frameGrayPrev);
 
+        Mat background;
+        bgs.getBackground(background);
+//        showMat("background", background);
+
         bboxesGT = readGtboxesPESMOT(fullPathFrame);
         for (Rect box: bboxesGT){
+
+            if (box.x + box.width > frame.cols){
+                box.width = frame.cols - box.x;
+            }
+            if (box.y + box.height > frame.rows){
+                box.height = frame.rows - box.y;
+            }
+
+            Mat frame_roi = frameGray(box);
+            Mat bg_roi= background(box);
+
+            float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi);
+            float score = calculateScore(frame_roi, bg_roi);
+            gtCosinusScores.push_back(cosSimilarity);
+            gtTemplateScores.push_back(score);
+
             rectangle(frameShow, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(0,255,0));
         }
 
         Mat maskRegions, maskSmallregions;
         findCombinedRegions(fgMask, maskRegions, maskSmallregions, bboxesFound, 10);
 
-        Mat background;
-        bgs.getBackground(background);
-        showMat("background", background);
-
         vector<Rect> selectedBoxes;
         for(Rect box: bboxesFound)
         {
+
             Mat frame_roi = frameGray(box);
             Mat bg_roi= background(box);
 
-            std::vector<torch::jit::IValue> inputs;
-            torch::Tensor in = imgToTensor(frame_roi);
-            inputs.push_back(in);
-            torch::Tensor output1 = model.forward(inputs).toTensor();
-
-            inputs.clear();
-            in = imgToTensor(bg_roi);
-            inputs.push_back(in);
-            torch::Tensor output2 = model.forward(inputs).toTensor();
-
-            std::vector<float> vector1(output1.data_ptr<float>(), output1.data_ptr<float>() + output1.numel());
-            std::vector<float> vector2(output2.data_ptr<float>(), output2.data_ptr<float>() + output2.numel());
-            float cosSimilarity = cosineSimilarity(vector1.data(), vector2.data(), 1000);
+            float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi);
             float score = calculateScore(frame_roi, bg_roi);
 
-            Mat temp;
-            resize(frame_roi, temp, Size(224,224));
-            imshow("frame_roi",temp);
-            resize(bg_roi, temp, Size(224,224));
-            imshow("bg_roi", temp);
-            cout << "score: "<<score<< "   cosSimilarity: " << cosSimilarity << endl;
-            waitKey(0);
+//            Mat temp;
+//            resize(frame_roi, temp, Size(224,224));
+//            imshow("frame_roi",temp);
+//            resize(bg_roi, temp, Size(224,224));
+//            imshow("bg_roi", temp);
+//            cout << "score: "<<score<< "   cosSimilarity: " << cosSimilarity << endl;
+//            waitKey(0);
 
             int x1 = (box.x < 20) ? 20 : box.x;
             int y1 = (box.y < 20) ? 20 : box.y;
 
-            if (abs(score) < 0.1){
+            if (abs(score) < 0.1 || cosSimilarity > 0.8){
                 rectangle(frame, box, Scalar (255,0,0), 2, 1);
-                putText(frameShow, to_string(score), cv::Point(x1, y1), 2,1, Scalar(255,0,0));
+                putText(frameShow, to_string(cosSimilarity), cv::Point(x1, y1), 2,1, Scalar(255,0,0));
                 continue;
             }
             selectedBoxes.push_back(box);
             rectangle(frameShow, box, Scalar (0,0,255), 2, 1);
-            putText(frameShow, to_string(score), cv::Point(x1, y1), 2,1, Scalar(0,0,255));
+            putText(frameShow, to_string(cosSimilarity), cv::Point(x1, y1), 2,1, Scalar(0,0,255));
         }
         compareResults(bboxesGT, selectedBoxes, totalGT, totalFound, totalIntersectRatio, totalTP, totalFP, totalTN, totalFN);
 
         showMat("frame", frameShow);
 
         i++;
+
+        if ( 0 == i % 20) {
+            double secs = (cv::getTickCount() - startTime) / cv::getTickFrequency();
+            cout << "elapsed time: " << secs << endl;
+        }
     } while (i < imageList.size());
 
 
@@ -185,6 +199,8 @@ int main() {
     cout << " intersectRatio average: " << totalIntersectRatio/totalTP  << endl;
     cout << " precision: " << precision << "  recall: " << recall << "  f1: " << f1 << "  pwc: "<< pwc << endl;
 
+    cout<< "gtTemplateScores: " << average(gtTemplateScores) << endl;
+    cout<< "gtCosinusScores: " << average(gtCosinusScores) << endl;
     return 0;
 }
 

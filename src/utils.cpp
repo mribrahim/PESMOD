@@ -5,6 +5,8 @@
 #include "utils.h"
 
 #include <dirent.h>
+#include <numeric>
+
 #include <opencv4/opencv2/cudaarithm.hpp>
 #include <opencv4/opencv2/cudawarping.hpp>
 #include <opencv4/opencv2/cudafilters.hpp>
@@ -343,6 +345,15 @@ void compareResults(const vector<cv::Rect> &gtBoxes, const vector<cv::Rect> &bbo
     totalFN += fn;
 }
 
+
+float average(std::vector<float> const& v){
+    if(v.empty()){
+        return 0;
+    }
+    float average = accumulate(v.begin(), v.end(), 0.0) / v.size();
+    return average;
+}
+
 cv::Mat crop_center(const cv::Mat &img)
 {
     const int rows = img.rows;
@@ -362,7 +373,7 @@ std::vector<double> norm_std = {0.229, 0.224, 0.225};
 torch::Tensor imgToTensor(Mat img)
 {
     img = crop_center(img);
-    cv::resize(img, img, cv::Size(224,224));
+//    cv::resize(img, img, cv::Size(64,64));
 
     if (img.channels()==1)
         cv::cvtColor(img, img, cv::COLOR_GRAY2RGB);
@@ -389,6 +400,23 @@ float cosineSimilarity(float *A, float *B, unsigned int Vector_Length)
         denom_b += B[i] * B[i] ;
     }
     return dot / (sqrt(denom_a) * sqrt(denom_b)) ;
+}
+
+float torchSimilarity(torch::jit::Module model, Mat frame_roi, Mat bg_roi)
+{
+    std::vector<torch::jit::IValue> inputs;
+    torch::Tensor in = imgToTensor(frame_roi);
+    inputs.push_back(in);
+    torch::Tensor output1 = model.forward(inputs).toTensor();
+
+    inputs.clear();
+    in = imgToTensor(bg_roi);
+    inputs.push_back(in);
+    torch::Tensor output2 = model.forward(inputs).toTensor();
+
+    std::vector<float> vector1(output1.data_ptr<float>(), output1.data_ptr<float>() + output1.numel());
+    std::vector<float> vector2(output2.data_ptr<float>(), output2.data_ptr<float>() + output2.numel());
+    return cosineSimilarity(vector1.data(), vector2.data(), vector1.size());
 }
 
 float calculateScoreTemplate(Mat frame, Mat bg) {
