@@ -11,12 +11,23 @@
 #include <opencv4/opencv2/cudawarping.hpp>
 #include <opencv4/opencv2/cudafilters.hpp>
 #include <opencv4/opencv2/cudaimgproc.hpp>
+#include "opencv4/opencv2/cudaobjdetect.hpp"
 
 using namespace std;
 using namespace cv;
 
 Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5,5));
 cv::Ptr<cv::cuda::Filter> morphFilterOpen = cuda::createMorphologyFilter(MORPH_OPEN, CV_8UC1, kernel);
+
+cv::Ptr<cv::cuda::HOG> hogGpu;
+
+int img_width = 64;
+int img_height = 64;
+int descriptors_rows = 0, descriptors_cols = 0;
+
+int block_size = 16;
+int bin_number = 9;
+int descSize = 8100;
 
 
 // flow2img
@@ -441,7 +452,45 @@ float calculateScoreHist(Mat frame, Mat bg) {
     return compareHist(hist1, hist2, HISTCMP_CORREL);
 }
 
+
+float calculateScoreHOG(Mat frame, Mat bg){
+
+    cuda::GpuMat d_frame1, d_frame2, d_temp1, d_temp2;
+    Mat temp1, temp2;
+    d_frame1.upload(frame);
+    d_frame2.upload(bg);
+    cuda::resize(d_frame1, d_temp1, Size(img_width,img_height));
+    cuda::resize(d_frame2, d_temp2, Size(img_width,img_height));
+
+    d_temp1.convertTo(d_frame1, CV_8UC1);
+    d_temp2.convertTo(d_frame2, CV_8UC1);
+
+    if (!hogGpu){
+        hogGpu = cuda::HOG::create(Size(img_width, img_height),
+                                   Size(block_size, block_size),
+                                   Size(block_size / 2, block_size / 2),
+                                   Size(block_size / 2, block_size / 2),
+                                   bin_number);
+    }
+
+    cuda::GpuMat descriptors_cuda1, descriptors_cuda2;
+    hogGpu->compute(d_frame1, descriptors_cuda1);
+    hogGpu->compute(d_frame2, descriptors_cuda2);
+    descriptors_cuda1.download(temp1);
+    descriptors_cuda2.download(temp2);
+    double dot = 0.0, denom_a = 0.0, denom_b = 0.0;
+    for (int i = 0; i < descriptors_cuda1.cols; i++)
+    {
+        float a=temp1.at<float>(0,i);
+        float b = temp2.at<float>(0,i);
+        dot += a*b;
+        denom_a += a*a;
+        denom_b += b*b;
+    }
+    return dot / (sqrt(denom_a) * sqrt(denom_b));
+}
+
 float calculateScore(Mat frame, Mat bg)
 {
-    return calculateScoreTemplate(frame, bg);
+    return calculateScoreHOG(frame, bg);
 }

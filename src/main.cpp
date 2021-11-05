@@ -25,7 +25,7 @@ void applySuperpixel(SuperPixel superPiksel, const Mat &frame, const cuda::GpuMa
 
 int main() {
 
-    string folderName = "Pexels-Wolfgang";
+    string folderName = "Pexels-Welton";
     string path =  "/home/ibrahim/Desktop/Dataset/my IHA dataset/PESMOD/";
 
     vector<string> imageList, maskList;
@@ -49,11 +49,6 @@ int main() {
     cuda::GpuMat d_frame, d_hsv, d_frameGray, d_fgMask;
     bool isInitialized = false;
     SimpleBackground bgs;
-    SuperPixel superPiksel;
-//    auto model = torch::jit::load("/home/ibrahim/MyProjects/traced_resnet_model.pt");
-//    model.eval();
-
-    vector<float> gtCosinusScores, gtTemplateScores;
 
     int totalGT=0, totalFound = 0, totalTP=0, totalFP=0, totalTN=0, totalFN=0;
     float totalIntersectRatio = 0;
@@ -107,7 +102,6 @@ int main() {
         Mat homoMat = findHomographyMatrix(frameGrayPrev, frameGray);
 
         bgs.update(homoMat, d_hsv, d_fgMask);
-//        applySuperpixel(superPiksel, frame, d_frame, d_fgMask);
         cuda::multiply(d_fgMask, 255, d_fgMask);
         d_fgMask.download(fgMask);
 
@@ -117,10 +111,6 @@ int main() {
         }
         showMat("Foreground mask", fgMask);
         frameGray.copyTo(frameGrayPrev);
-
-        Mat background;
-        bgs.getBackground(background);
-//        showMat("background", background);
 
         bboxesGT = readGtboxesPESMOT(fullPathFrame);
         for (Rect box: bboxesGT){
@@ -132,14 +122,6 @@ int main() {
                 box.height = frame.rows - box.y;
             }
 
-            Mat frame_roi = frameGray(box);
-            Mat bg_roi= background(box);
-
-//            float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi);
-//            float score = calculateScore(frame_roi, bg_roi);
-//            gtCosinusScores.push_back(cosSimilarity);
-//            gtTemplateScores.push_back(score);
-
             rectangle(frameShow, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(0,255,0));
         }
 
@@ -150,31 +132,21 @@ int main() {
         for(Rect box: bboxesFound)
         {
 
-            Mat frame_roi = frameGray(box);
-            Mat bg_roi= background(box);
+            unsigned int x1 = box.x;
+            unsigned int y1 = box.y;
+            unsigned int x2 = box.x + box.width;
+            unsigned int y2 = box.y + box.height;
 
-//            Mat temp;
-//            resize(frame_roi, temp, Size(224,224));
-//            imshow("frame_roi",temp);
-//            resize(bg_roi, temp, Size(224,224));
-//            imshow("bg_roi", temp);
-//            cout << "score: "<<score<< "   cosSimilarity: " << cosSimilarity << endl;
-//            waitKey(0);
-//
-//            float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi);
-//            float score = calculateScore(frame_roi, bg_roi);
-
-//            int x1 = (box.x < 20) ? 20 : box.x;
-//            int y1 = (box.y < 20) ? 20 : box.y;
-//
-//            if (abs(score) < 0.1 || cosSimilarity > 0.8){
-//                rectangle(frame, box, Scalar (255,0,0), 2, 1);
-//                putText(frameShow, to_string(cosSimilarity), cv::Point(x1, y1), 2,1, Scalar(255,0,0));
-//                continue;
+//            if (x1 < 5 or y1 < 5 or x2 > frame.cols-5 or y2 > frame.rows-5)
+//            {
+//                if (min(box.width, box.height) / max(box.width, box.height) < 0.2 ){
+//                    continue;
+//                }
 //            }
+
             selectedBoxes.push_back(box);
             rectangle(frameShow, box, Scalar (0,0,255), 2, 1);
-//            putText(frameShow, to_string(cosSimilarity), cv::Point(x1, y1), 2,1, Scalar(0,0,255));
+//            waitKey(0);
         }
         compareResults(bboxesGT, selectedBoxes, totalGT, totalFound, totalIntersectRatio, totalTP, totalFP, totalTN, totalFN);
 
@@ -201,8 +173,6 @@ int main() {
     cout << " intersectRatio average: " << totalIntersectRatio/totalTP  << endl;
     cout << " precision: " << precision << "  recall: " << recall << "  f1: " << f1 << "  pwc: "<< pwc << endl;
 
-    cout<< "gtTemplateScores: " << average(gtTemplateScores) << endl;
-    cout<< "gtCosinusScores: " << average(gtCosinusScores) << endl;
     return 0;
 }
 
