@@ -25,11 +25,10 @@ void applySuperpixel(SuperPixel superPiksel, const Mat &frame, const cuda::GpuMa
 
 int main() {
 
-    string folderName = "Pexels-Welton";
+    string folderName = "Pexels-Shuraev-trekking";
     string path =  "/home/ibrahim/Desktop/Dataset/my IHA dataset/PESMOD/";
 
     vector<string> imageList, maskList;
-    bool maskFound = false;
 
     read_directory(path + folderName + "/images/", imageList);
     sort(imageList.begin(), imageList.end());
@@ -46,9 +45,18 @@ int main() {
     }
 
     Mat frame, frameGray, frameGrayPrev, fgMask;
+
     cuda::GpuMat d_frame, d_hsv, d_frameGray, d_fgMask;
     bool isInitialized = false;
     SimpleBackground bgs;
+    auto model = torch::jit::load("/home/ibrahim/MyProjects/traced_resnet_model.pt");
+    model.eval();
+
+    torch::Device device = torch::kCPU;
+    if (torch::cuda::is_available()) {
+        device = torch::kCUDA;
+        model.to(device);
+    }
 
     int totalGT=0, totalFound = 0, totalTP=0, totalFP=0, totalTN=0, totalFN=0;
     float totalIntersectRatio = 0;
@@ -105,6 +113,10 @@ int main() {
         cuda::multiply(d_fgMask, 255, d_fgMask);
         d_fgMask.download(fgMask);
 
+        Mat background;
+        bgs.getBackground(background);
+        showMat("background", background);
+
         if (fgMask.empty()){
             i++;
             continue;
@@ -122,6 +134,12 @@ int main() {
                 box.height = frame.rows - box.y;
             }
 
+//            for (int j = 0; j < 5; ++j) {
+//                Mat frame_roi = frameGray(box);
+//                Mat bg_roi= background(box);
+//                float cosSimilarity = torchSimilarity(model, frame_roi, bg_roi, device);
+//            }
+
             rectangle(frameShow, Point(box.x, box.y), Point(box.x+box.width, box.y+box.height), Scalar(0,255,0));
         }
 
@@ -137,12 +155,31 @@ int main() {
             unsigned int x2 = box.x + box.width;
             unsigned int y2 = box.y + box.height;
 
-//            if (x1 < 5 or y1 < 5 or x2 > frame.cols-5 or y2 > frame.rows-5)
-//            {
-//                if (min(box.width, box.height) / max(box.width, box.height) < 0.2 ){
-//                    continue;
-//                }
-//            }
+            Rect boxLarged(box);
+            enlargeRect(boxLarged, 10);
+            Mat frame_roi = frameGray(boxLarged);
+            Mat bg_roi= background(boxLarged);
+
+            float similarity = torchSimilarity(model, frame_roi, bg_roi, device);
+            putText(frameShow, to_string(int(similarity*100)), Point(x1, y1-10), FONT_HERSHEY_COMPLEX, 1, Scalar(0,0,255));
+
+            if (similarity>0.80){
+                continue;
+            }
+////            showMat("roi", frame_roi);
+//            showMat("roi-BG", bg_roi);
+//            Mat edges, edgesBG;
+//            Canny(frame_roi, edges, 100, 200, 5);
+//            showMat("patch", edges);
+//            Canny(bg_roi, edgesBG, 100, 200, 5);
+//            showMat("bg", edgesBG);
+//
+//            Mat temp, res;
+//            cv::bitwise_xor(edges, edgesBG, temp);
+//            cv::subtract(edges, temp, res);
+//            showMat("result", res);
+//            waitKey(0);
+
 
             selectedBoxes.push_back(box);
             rectangle(frameShow, box, Scalar (0,0,255), 2, 1);
@@ -169,7 +206,7 @@ int main() {
     cout << " folderName: " << folderName << endl;
     cout << " totalGT: " << totalGT << endl;
     cout << " (totalTP + totalFN): " << (totalTP + totalFN) << endl;
-    cout << " totalFound: " << totalFound << endl;
+    cout << " totalFound: " << totalFound << setprecision(4) << endl;
     cout << " intersectRatio average: " << totalIntersectRatio/totalTP  << endl;
     cout << " precision: " << precision << "  recall: " << recall << "  f1: " << f1 << "  pwc: "<< pwc << endl;
 

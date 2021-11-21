@@ -30,8 +30,6 @@ void SimpleBackground::init(const cuda::GpuMat &d_frame, int _minAge, int _maxAg
     d_age = cuda::GpuMat(height, width, CV_8UC1);
     d_background = cuda::GpuMat(height, width, dtype);
     d_ageMaskTemp = cv::cuda::GpuMat(d_frame.size(), CV_8UC1, cv::Scalar(1));
-    map = Mat(d_frame.size(), CV_32FC2);
-    d_map = cuda::GpuMat(d_frame.size(), CV_32FC2);
 
     d_frame.convertTo(d_background, dtype);
     d_age.setTo(0);
@@ -72,22 +70,21 @@ bool SimpleBackground::update(const Mat &homoMat, const cuda::GpuMat &d_hsv, cud
     cuda::subtract(Scalar (1.0,1.0,1.0), d_alpha, d_alpha_inv);
 // ****************************************************************
 
-//    cuda::absdiff(d_background, d_frame, d_diff);
+    if (d_frameGrayPrev.empty()){
+        d_frameGray.copyTo(d_frameGrayPrev);
+    }
+
+    cuda::warpPerspective(d_frameGrayPrev, d_diffPrev, homoMat, d_frameGrayPrev.size(), INTER_LINEAR);
+    cuda::absdiff(d_diffPrev, d_frameGray, d_temp);
+    d_temp.convertTo(d_diffPrev, CV_32FC1);
+//    showGPUMat("d_diffPrev", d_diffPrev, d_dummmy, 10);
+
+    //    cuda::absdiff(d_background, d_frame, d_diff);
     affineDiff(3, d_background, d_frame, d_diff);
     maxOf3bands(d_diff, d_resultBasicDiff);
 //    showGPUMat("d_resultBasicDiff", d_resultBasicDiff, d_dummmy, 10);
 
-    if (d_frameHistory.size()>10){
-        d_frameHistory.erase(d_frameHistory.begin());
-    }
-
-    if (0 == d_frameHistory.size()){
-        d_frameGray.copyTo(d_frameComparison);
-    }else {
-        d_frameComparison = d_frameHistory.at(d_frameHistory.size() - 1);
-    }
-
-    farneback->calc(d_frameComparison, d_frameGray, d_flowFarneback);
+    farneback->calc(d_frameGrayPrev, d_frameGray, d_flowFarneback);
 //    flow2img(d_flowFarneback, d_temp);
 //    showGPUMat("d_flowFarneback", d_temp, d_dummmy);
 
@@ -99,13 +96,16 @@ bool SimpleBackground::update(const Mat &homoMat, const cuda::GpuMat &d_hsv, cud
         meanBG=19;
     }
     float ratioThresh = 1 + 0.005 * exp( (1 + meanBG) / 4) ;
-//    cout <<"ratioThresh: " <<ratioThresh<< "  thresh Final: "<< fgThreshDiff * ratioThresh<<endl;
 
     getChannel(d_background, 2, d_bgGray);
     farneback->calc(d_bgGray, d_frameGray, d_flowFarneback);
     flow2MagAngle(d_flowFarneback, d_magnitude, d_temp);
-    processDiff(d_resultBasicDiff, fgThreshDiff * ratioThresh, d_magnitude, d_result);
-//    showGPUMat("d_magnitude", d_magnitude, d_dummmy, 20);
+    processDiff(d_resultBasicDiff, fgThreshDiff * ratioThresh, d_magnitude, d_resultBG);
+    processDiff(d_diffPrev, fgThreshDiff * ratioThresh, d_magnitude, d_resultPrev);
+    showGPUMat("d_resultBG", d_resultBG, d_dummmy, 255);
+    showGPUMat("d_resultPrev", d_resultPrev, d_dummmy, 255);
+
+    cuda::bitwise_and(d_resultBG, d_resultPrev, d_result);
 
     // **************** background(mean)***************
     cuda::multiply(d_background, d_alpha_inv, d_backgroundTemp);
@@ -114,11 +114,32 @@ bool SimpleBackground::update(const Mat &homoMat, const cuda::GpuMat &d_hsv, cud
 //  showGPUMat("d_background", d_background, d_dummmy, 1, 2);
     // ************************************************
 
+    vector<Rect> rectangles;
+    Mat mask, regionMask, smallRegionMask;
+    d_result.convertTo(d_fgMask, CV_8UC1);
+    d_fgMask.download(mask);
+    findCombinedRegions(mask, regionMask, smallRegionMask, rectangles);
+//    showMat("smallRegionMask", smallRegionMask);
+//    showMat("regionMask", regionMask);
+
+    d_regionMask.upload(regionMask);
+    showGPUMat("d_regionMask", d_regionMask, d_dummmy, 255);
+
+    cuda::bitwise_or(d_result, d_resultPrev, d_result, d_regionMask);
+    cuda::bitwise_or(d_result, d_resultBG, d_result, d_regionMask);
+
+    // ***** feedback for BG *****
+    cuda::GpuMat tempMask;
+    cuda::cvtColor(d_result, tempMask, COLOR_GRAY2BGR);
+    cuda::multiply(d_frameRatio, tempMask, d_frameRatio);
+    cuda::subtract(d_background, d_frameRatio, d_background);
+    // ***** feedback for BG *****
+
     d_result.convertTo(d_fgMask, CV_8UC1);
     cuda::bitwise_and(d_fgMask, d_age_mask, d_fgMask);
     applyOpening(d_fgMask, d_fgMask);
 
-    d_frameHistory.push_back(d_frameGray.clone());
+    d_frameGray.copyTo(d_frameGrayPrev);
     return true;
 }
 

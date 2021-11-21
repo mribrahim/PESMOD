@@ -83,7 +83,7 @@ void showGPUMat(string window_text, const cuda::GpuMat &d_matInput, const cuda::
         d_matInput.copyTo(d_mat);
     }
 
-    if (channel>0){
+    if (channel>=0){
         getChannel(d_mat, channel, d_mat);
     }
     Mat temp;
@@ -262,12 +262,25 @@ vector<Rect> readGtboxesPESMOT(string path) {
 }
 
 
-void enlargeRect(cv::Rect &rect, int a)
+void enlargeRect(cv::Rect &rect, int a, int w, int h)
 {
     rect.x -=a;
     rect.y -=a;
-    rect.width +=a;
-    rect.height +=a;
+    rect.width += (a*2);
+    rect.height += (a*2);
+
+    if(rect.x < 0){
+        rect.x = 0;
+    }
+    if(rect.y < 0){
+        rect.y = 0;
+    }
+    if( (rect.x + rect.width) >= w){
+        rect.width = w - rect.x - 1;
+    }
+    if( (rect.y + rect.height) >= h){
+        rect.height = h - rect.y - 1;
+    }
 }
 
 void findCombinedRegions(const Mat &mask, Mat &maskRegionOutput, Mat &maskSmallregions, vector<Rect> &rectangles, int minArea)
@@ -285,7 +298,14 @@ void findCombinedRegions(const Mat &mask, Mat &maskRegionOutput, Mat &maskSmallr
         }
 
         Rect rect = boundingRect(contours[i]);
-        enlargeRect(rect);
+        Mat roi = mask(rect);
+        float motionRatio = (float)countNonZero(roi) / (rect.width*rect.height);
+        if (motionRatio < 0.1){
+            continue;
+        }
+        if (rect.width<50 && rect.height<50) {
+            enlargeRect(rect);
+        }
         rectangle(maskSmallregions, Point(rect.x, rect.y), Point(rect.x+rect.width, rect.y+rect.height), 1);
         //        drawContours( drawing, contours, (int)i, color, 2, LINE_8 );
     }
@@ -381,7 +401,7 @@ cv::Mat crop_center(const cv::Mat &img)
 std::vector<double> norm_mean = {0.485, 0.456, 0.406};
 std::vector<double> norm_std = {0.229, 0.224, 0.225};
 
-torch::Tensor imgToTensor(Mat img)
+torch::Tensor imgToTensor(Mat img, torch::Device device)
 {
     img = crop_center(img);
 //    cv::resize(img, img, cv::Size(64,64));
@@ -399,7 +419,7 @@ torch::Tensor imgToTensor(Mat img)
 
     img_tensor = torch::data::transforms::Normalize<>(norm_mean, norm_std)(img_tensor);
 
-    return img_tensor.clone();
+    return img_tensor;
 }
 
 float cosineSimilarity(float *A, float *B, unsigned int Vector_Length)
@@ -413,17 +433,17 @@ float cosineSimilarity(float *A, float *B, unsigned int Vector_Length)
     return dot / (sqrt(denom_a) * sqrt(denom_b)) ;
 }
 
-float torchSimilarity(torch::jit::Module model, Mat frame_roi, Mat bg_roi)
+float torchSimilarity(torch::jit::Module model, Mat frame_roi, Mat bg_roi, torch::Device device)
 {
     std::vector<torch::jit::IValue> inputs;
-    torch::Tensor in = imgToTensor(frame_roi);
-    inputs.push_back(in);
-    torch::Tensor output1 = model.forward(inputs).toTensor();
+    torch::Tensor in = imgToTensor(frame_roi, device);
+    inputs.push_back(in.to(device));
+    torch::Tensor output1 = model.forward(inputs).toTensor().cpu();
 
     inputs.clear();
-    in = imgToTensor(bg_roi);
-    inputs.push_back(in);
-    torch::Tensor output2 = model.forward(inputs).toTensor();
+    in = imgToTensor(bg_roi, device);
+    inputs.push_back(in.to(device));
+    torch::Tensor output2 = model.forward(inputs).toTensor().cpu();
 
     std::vector<float> vector1(output1.data_ptr<float>(), output1.data_ptr<float>() + output1.numel());
     std::vector<float> vector2(output2.data_ptr<float>(), output2.data_ptr<float>() + output2.numel());
