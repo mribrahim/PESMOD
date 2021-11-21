@@ -64,12 +64,25 @@ vector<Rect> readGtboxesPESMOT(string path) {
 }
 
 
-void enlargeRect(cv::Rect &rect, int a)
+void enlargeRect(cv::Rect &rect, int a, int w, int h)
 {
     rect.x -=a;
     rect.y -=a;
-    rect.width +=a;
-    rect.height +=a;
+    rect.width += (a*2);
+    rect.height += (a*2);
+
+    if(rect.x < 0){
+        rect.x = 0;
+    }
+    if(rect.y < 0){
+        rect.y = 0;
+    }
+    if( (rect.x + rect.width) >= w){
+        rect.width = w - rect.x - 1;
+    }
+    if( (rect.y + rect.height) >= h){
+        rect.height = h - rect.y - 1;
+    }
 }
 
 void findCombinedRegions(const Mat &mask, Mat &maskRegionOutput, Mat &maskSmallregions, vector<Rect> &rectangles, int minArea)

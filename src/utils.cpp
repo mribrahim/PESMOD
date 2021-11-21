@@ -298,14 +298,7 @@ void findCombinedRegions(const Mat &mask, Mat &maskRegionOutput, Mat &maskSmallr
         }
 
         Rect rect = boundingRect(contours[i]);
-        Mat roi = mask(rect);
-        float motionRatio = (float)countNonZero(roi) / (rect.width*rect.height);
-        if (motionRatio < 0.1){
-            continue;
-        }
-        if (rect.width<50 && rect.height<50) {
-            enlargeRect(rect);
-        }
+        enlargeRect(rect);
         rectangle(maskSmallregions, Point(rect.x, rect.y), Point(rect.x+rect.width, rect.y+rect.height), 1);
         //        drawContours( drawing, contours, (int)i, color, 2, LINE_8 );
     }
