@@ -74,11 +74,6 @@ bool SimpleBackground::update(const Mat &homoMat, const cuda::GpuMat &d_hsv, cud
         d_frameGray.copyTo(d_frameGrayPrev);
     }
 
-    cuda::warpPerspective(d_frameGrayPrev, d_diffPrev, homoMat, d_frameGrayPrev.size(), INTER_LINEAR);
-    cuda::absdiff(d_diffPrev, d_frameGray, d_temp);
-    d_temp.convertTo(d_diffPrev, CV_32FC1);
-//    showGPUMat("d_diffPrev", d_diffPrev, d_dummmy, 10);
-
     //    cuda::absdiff(d_background, d_frame, d_diff);
     affineDiff(3, d_background, d_frame, d_diff);
     maxOf3bands(d_diff, d_resultBasicDiff);
@@ -100,12 +95,9 @@ bool SimpleBackground::update(const Mat &homoMat, const cuda::GpuMat &d_hsv, cud
     getChannel(d_background, 2, d_bgGray);
     farneback->calc(d_bgGray, d_frameGray, d_flowFarneback);
     flow2MagAngle(d_flowFarneback, d_magnitude, d_temp);
-    processDiff(d_resultBasicDiff, fgThreshDiff * ratioThresh, d_magnitude, d_resultBG);
-    processDiff(d_diffPrev, fgThreshDiff * ratioThresh, d_magnitude, d_resultPrev);
-    showGPUMat("d_resultBG", d_resultBG, d_dummmy, 255);
-    showGPUMat("d_resultPrev", d_resultPrev, d_dummmy, 255);
+    processDiff(d_resultBasicDiff, fgThreshDiff * ratioThresh, d_result);
+//    showGPUMat("d_resultPrev", d_resultPrev, d_dummmy, 255);
 
-    cuda::bitwise_and(d_resultBG, d_resultPrev, d_result);
 
     // **************** background(mean)***************
     cuda::multiply(d_background, d_alpha_inv, d_backgroundTemp);
@@ -114,26 +106,7 @@ bool SimpleBackground::update(const Mat &homoMat, const cuda::GpuMat &d_hsv, cud
 //  showGPUMat("d_background", d_background, d_dummmy, 1, 2);
     // ************************************************
 
-    vector<Rect> rectangles;
-    Mat mask, regionMask, smallRegionMask;
-    d_result.convertTo(d_fgMask, CV_8UC1);
-    d_fgMask.download(mask);
-    findCombinedRegions(mask, regionMask, smallRegionMask, rectangles);
-//    showMat("smallRegionMask", smallRegionMask);
-//    showMat("regionMask", regionMask);
 
-    d_regionMask.upload(regionMask);
-    showGPUMat("d_regionMask", d_regionMask, d_dummmy, 255);
-
-    cuda::bitwise_or(d_result, d_resultPrev, d_result, d_regionMask);
-    cuda::bitwise_or(d_result, d_resultBG, d_result, d_regionMask);
-
-    // ***** feedback for BG *****
-    cuda::GpuMat tempMask;
-    cuda::cvtColor(d_result, tempMask, COLOR_GRAY2BGR);
-    cuda::multiply(d_frameRatio, tempMask, d_frameRatio);
-    cuda::subtract(d_background, d_frameRatio, d_background);
-    // ***** feedback for BG *****
 
     d_result.convertTo(d_fgMask, CV_8UC1);
     cuda::bitwise_and(d_fgMask, d_age_mask, d_fgMask);

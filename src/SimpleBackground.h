@@ -28,7 +28,7 @@ private:
     int dtype = CV_32FC3;
     int minAge;
     int maxAge;
-    int fgThreshDiff = 25;
+    int fgThreshDiff = 40;
 
     cv::cuda::GpuMat d_dummmy, d_temp;
     cv::cuda::GpuMat d_frame, d_frameGray, d_frameGrayPrev;
@@ -37,7 +37,7 @@ private:
     cv::cuda::GpuMat d_alpha, d_alpha_inv;
     cv::cuda::GpuMat d_age3band, d_age_f;
     cv::cuda::GpuMat d_magMask, d_magnitudeNorm, d_diffModified;
-    cv::cuda::GpuMat d_diff, d_resultBasicDiff, d_diffPrev, d_result, d_resultBG, d_resultPrev;
+    cv::cuda::GpuMat d_diff, d_resultBasicDiff, d_result;
     cv::cuda::GpuMat d_flowFarneback, d_magnitude, d_regionMask;
 
     void processDiff(const cv::cuda::GpuMat &d_diff, float fgThresh, const cv::cuda::GpuMat &d_magnitude, cv::cuda::GpuMat &d_result);

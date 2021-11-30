@@ -49,6 +49,7 @@ int main() {
     cuda::GpuMat d_frame, d_hsv, d_frameGray, d_fgMask;
     bool isInitialized = false;
     SimpleBackground bgs;
+    SuperPixel superPiksel;
     auto model = torch::jit::load("/home/ibrahim/MyProjects/traced_resnet_model.pt");
     model.eval();
 
@@ -110,12 +111,13 @@ int main() {
         Mat homoMat = findHomographyMatrix(frameGrayPrev, frameGray);
 
         bgs.update(homoMat, d_hsv, d_fgMask);
+        applySuperpixel(superPiksel, frame, d_frame, d_fgMask);
         cuda::multiply(d_fgMask, 255, d_fgMask);
         d_fgMask.download(fgMask);
 
         Mat background;
         bgs.getBackground(background);
-        showMat("background", background);
+//        showMat("background", background);
 
         if (fgMask.empty()){
             i++;
@@ -166,20 +168,6 @@ int main() {
             if (similarity>0.80){
                 continue;
             }
-////            showMat("roi", frame_roi);
-//            showMat("roi-BG", bg_roi);
-//            Mat edges, edgesBG;
-//            Canny(frame_roi, edges, 100, 200, 5);
-//            showMat("patch", edges);
-//            Canny(bg_roi, edgesBG, 100, 200, 5);
-//            showMat("bg", edgesBG);
-//
-//            Mat temp, res;
-//            cv::bitwise_xor(edges, edgesBG, temp);
-//            cv::subtract(edges, temp, res);
-//            showMat("result", res);
-//            waitKey(0);
-
 
             selectedBoxes.push_back(box);
             rectangle(frameShow, box, Scalar (0,0,255), 2, 1);
