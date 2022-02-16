@@ -1,3 +1,0 @@
-/home/ibrahim/MyProjects/PESMOD/performance/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/ibrahim/MyProjects/PESMOD/performance/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/ibrahim/MyProjects/PESMOD/performance/cmake-build-debug/CMakeFiles/performance.dir
