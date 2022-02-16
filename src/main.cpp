@@ -25,7 +25,7 @@ void applySuperpixel(SuperPixel superPiksel, const Mat &frame, const cuda::GpuMa
 
 int main() {
 
-    string folderName = "Pexels-Shuraev-trekking";
+    string folderName = "Pexels-Welton";
     string path =  "/home/ibrahim/Desktop/Dataset/my IHA dataset/PESMOD/";
 
     vector<string> imageList, maskList;
@@ -50,7 +50,7 @@ int main() {
     bool isInitialized = false;
     SimpleBackground bgs;
     SuperPixel superPiksel;
-    auto model = torch::jit::load("/home/ibrahim/MyProjects/traced_resnet_model.pt");
+    auto model = torch::jit::load("../../traced_resnet_model.pt");
     model.eval();
 
     torch::Device device = torch::kCPU;
@@ -164,6 +164,17 @@ int main() {
 
             float similarity = torchSimilarity(model, frame_roi, bg_roi, device);
             putText(frameShow, to_string(int(similarity*100)), Point(x1, y1-10), FONT_HERSHEY_COMPLEX, 1, Scalar(0,0,255));
+
+            Mat temp1 = bg_roi;
+            Mat temp2 = frame_roi;
+            resize(temp1, temp1, Size(250, 250));
+            resize(temp2, temp2, Size(250, 250));
+            cvtColor(temp1, temp1, COLOR_GRAY2BGR);
+            cvtColor(temp2, temp2, COLOR_GRAY2BGR);
+            //putText(temp1, "0." + to_string(int(similarity*100)), Point(5, 30), FONT_HERSHEY_COMPLEX, 1, Scalar(0,0,255));
+            //imshow("bg_roi", temp1);
+            //imshow("frame_roi", temp2);
+            //waitKey(0);
 
             if (similarity>0.80){
                 continue;
