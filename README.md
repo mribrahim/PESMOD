@@ -15,6 +15,26 @@
 | Total            |       4107       |           13834          |
 
 
+# Evaluations for different motion detection methods on PESMOD
+
+| IOU | Method | P | R | F1 |
+|----------------------------------|-----------------------------------------------|--------------------------------------------------------|--------------------------------------------------------|----------------------------|
+| 0.5    | MCD                                           | 0\.3928                                                | 0\.4163                                                | 0\.2856                    |
+|                                  | SCBU                                          | 0\.3248                                                | 0\.3127                                                | 0\.3072                    |
+|                                  | BSDOF                                         | 0\.4890                                                | 0\.4061                                                | 0\.3898                    |
+|                                  | RTBS                                          | 0\.5442                                                | **0\.4636**                                    | 0\.4538                    |
+|                                  | RTBS\*                                        | **0\.6023**                                    | 0\.4315                                                | **0\.4618**        |
+| 0.25  | MCD                                           | 0\.5133                                                | 0\.5266                                                | 0\.3717                    |
+|                                  | SCBU                                          | 0\.4846                                                | 0\.4490                                                | 0\.4373                    |
+|                                  | BSDOF                                         | 0\.7309                                                | 0\.5681                                                | 0\.5670                    |
+|                                  | RTBS                                          | 0\.7958                                                | **0\.6093**                                    | 0\.6177                    |
+|                                  | RTBS\*                                        | **0\.8629**                                    | 0\.5697                                                | **0\.6240**        |
+
+[MCD](https://www.cv-foundation.org/openaccess/content_cvpr_workshops_2013/W03/html/Yi_Detection_of_Moving_2013_CVPR_paper.html)\
+[SCBU](https://www.sciencedirect.com/science/article/pii/S0167865517300260)\
+[BSDOF](https://www.spiedigitallibrary.org/journals/journal-of-electronic-imaging/volume-30/issue-6/063027/Real-time-motion-detection-with-candidate-masks-and-region-growing/10.1117/1.JEI.30.6.063027.short)\
+RTBS: under review
+
 # Download
 
 Click [here](https://drive.google.com/file/d/153fLcf4F33G3oKWYUkggBWJRP5LVHV60/view?usp=sharing) to download the dataset
