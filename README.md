@@ -33,7 +33,7 @@
 [MCD](https://www.cv-foundation.org/openaccess/content_cvpr_workshops_2013/W03/html/Yi_Detection_of_Moving_2013_CVPR_paper.html)\
 [SCBU](https://www.sciencedirect.com/science/article/pii/S0167865517300260)\
 [BSDOF](https://www.spiedigitallibrary.org/journals/journal-of-electronic-imaging/volume-30/issue-6/063027/Real-time-motion-detection-with-candidate-masks-and-region-growing/10.1117/1.JEI.30.6.063027.short)\
-RTBS: under review
+[RTBS](https://link.springer.com/article/10.1007/s11760-022-02458-y)
 
 # Download
 
